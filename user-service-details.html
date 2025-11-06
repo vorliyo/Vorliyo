@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="ta">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title id="pageTitle">சேவை விவரங்கள்</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+
+    <header class="bg-white shadow-md">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex justify-between items-center">
+            <a href="user-index.html" class="text-3xl font-extrabold text-indigo-600 tracking-tight">Vorliyo</a>
+            <button onclick="window.history.back()" class="text-gray-600 hover:text-indigo-600 flex items-center">
+                <span data-lucide="arrow-left" class="w-5 h-5 mr-1"></span> திரும்பிப் போக
+            </button>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            
+            <div class="lg:col-span-2 bg-white p-8 rounded-xl shadow-lg h-fit">
+                <p id="loadingMessage" class="text-center text-lg text-indigo-500 font-semibold">சேவை விவரங்களைப் பெறுகிறது...</p>
+
+                <div id="serviceDetailsContent" class="hidden">
+                    <span id="serviceCategory" class="inline-block text-sm font-medium bg-indigo-100 text-indigo-800 px-3 py-1 rounded-full mb-3"></span>
+                    <h1 id="serviceTitle" class="text-3xl font-bold text-gray-900 mb-4"></h1>
+                    
+                    <div class="flex items-center space-x-6 text-gray-600 mb-6">
+                        <div class="flex items-center">
+                            <span data-lucide="clock" class="w-5 h-5 mr-1 text-indigo-600"></span>
+                            Delivery: <span id="serviceDelivery" class="font-semibold ml-1">0 Days</span>
+                        </div>
+                    </div>
+
+                    <h2 class="text-2xl font-semibold text-gray-800 mb-3 border-b pb-2">சேவை விளக்கம்</h2>
+                    <p id="serviceDescription" class="text-gray-700 leading-relaxed"></p>
+
+                    <h2 class="text-2xl font-semibold text-gray-800 mt-8 mb-3 border-b pb-2">ஃப்ரீலான்சர் சுயவிவரம்</h2>
+                    <p class="text-gray-700 leading-relaxed">
+                        Name: <span id="freelancerName" class="font-semibold">Freelancer User</span>
+                    </p>
+                    <p class="text-gray-700 leading-relaxed italic">
+                        Tagline: <span id="freelancerTagline">சிறந்த சேவையை வழங்குவதே என் இலக்கு.</span>
+                    </p>
+                    <p class="text-gray-700 leading-relaxed mt-4">
+                         About: <span id="freelancerAbout" class="block mt-1">விவரங்கள் இல்லை.</span>
+                    </p>
+                    
+                </div>
+            </div>
+
+            <div class="lg:col-span-1">
+                <div class="bg-white p-6 rounded-xl shadow-2xl sticky top-20 border-t-4 border-indigo-600">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-2xl font-bold text-gray-900">விலை ஆரம்பம்</h3>
+                        <span id="servicePrice" class="text-3xl font-extrabold text-green-600">LKR 0 / மணி</span>
+                    </div>
+
+                    <p class="text-gray-600 mb-4 italic">
+                        மொத்த விலை மற்றும் காலத்தை ஃப்ரீலான்சருடன் பேசித் தீர்மானிக்கவும்.
+                    </p>
+
+                    <button onclick="handleContact()" id="contactButton" class="w-full flex items-center justify-center py-3 px-4 rounded-lg shadow-md text-lg font-medium text-white bg-indigo-600 hover:bg-indigo-700 transition duration-150">
+                        <span data-lucide="mail" class="w-5 h-5 mr-2"></span> Order Now (தொடர்பு கொள்ள)
+                    </button>
+                    
+                    <p id="contactMessage" class="text-sm text-red-600 mt-3 text-center hidden">
+                        உள்நுழைந்த வாடிக்கையாளருக்கு மட்டுமே ஃப்ரீலான்சர் தொடர்பு விவரங்கள் காண்பிக்கப்படும்.
+                    </p>
+                    <p id="freelancerEmailDisplay" class="text-base font-semibold text-center text-gray-700 mt-2 hidden"></p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="bg-gray-800 text-white mt-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 text-center">
+            <p>&copy; 2024 Vorliyo. சகான் உருவாக்கிய ஃப்ரீலான்ஸ் தளம்.</p>
+        </div>
+    </footer>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, collection } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Firebase Config (Please make sure this is your config!)
+        const FIREBASE_CONFIG = {
+            apiKey: "AIzaSyDD755-oGyx0hwrLykhF7m2k1uWFnLFMDQ",
+            authDomain: "vorliyo.firebaseapp.com",
+            projectId: "vorliyo",
+            storageBucket: "vorliyo.firebasestorage.app",
+            messagingSenderId: "480604417883",
+            appId: "1:480604417883:web:5b4926a2a1b21f3ae2747e",
+        };
+        
+        const firebaseConfig = FIREBASE_CONFIG;
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'vorliyo-default-app-id';
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        
+        let currentService = null;
+        let freelancerData = null;
+        
+        const getProfileDocRef = (uid) => doc(db, 'artifacts', appId, 'users', uid, 'profile', uid);
+        const PUBLIC_SERVICES_COLLECTION = collection(db, 'artifacts', appId, 'public', 'data', 'services');
+
+        // --- INITIAL DATA FETCH ---
+        document.addEventListener('DOMContentLoaded', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const serviceId = urlParams.get('id');
+
+            if (!serviceId) {
+                document.getElementById('loadingMessage').textContent = 'சேவை ID காணப்படவில்லை.';
+                return;
+            }
+            fetchServiceDetails(serviceId);
+        });
+
+        async function fetchServiceDetails(serviceId) {
+            try {
+                // 1. Fetch Service Data (Public)
+                const serviceDocRef = doc(PUBLIC_SERVICES_COLLECTION, serviceId);
+                const serviceSnap = await getDoc(serviceDocRef);
+
+                if (!serviceSnap.exists()) {
+                    document.getElementById('loadingMessage').textContent = 'இந்த சேவை விவரங்கள் இல்லை.';
+                    return;
+                }
+
+                currentService = serviceSnap.data();
+                
+                // 2. Fetch Freelancer Data (Profile)
+                if (currentService.freelancerId) {
+                    const freelancerDocRef = getProfileDocRef(currentService.freelancerId);
+                    const freelancerSnap = await getDoc(freelancerDocRef);
+                    if (freelancerSnap.exists()) {
+                        freelancerData = freelancerSnap.data();
+                    }
+                }
+
+                renderDetails();
+                
+            } catch (error) {
+                console.error("Error fetching service details:", error);
+                document.getElementById('loadingMessage').textContent = 'தரவைப் பெறும்போது பிழை ஏற்பட்டது.';
+            }
+        }
+        
+        // --- RENDERING DETAILS ---
+        function renderDetails() {
+            if (!currentService) return;
+
+            // Service Details
+            document.getElementById('pageTitle').textContent = currentService.title;
+            document.getElementById('serviceCategory').textContent = currentService.category;
+            document.getElementById('serviceTitle').textContent = currentService.title;
+            document.getElementById('serviceDescription').textContent = currentService.description;
+            document.getElementById('servicePrice').textContent = `LKR ${currentService.price.toLocaleString()} / மணி`;
+            document.getElementById('serviceDelivery').textContent = `${currentService.deliveryDays} Days`;
+            
+            // Freelancer Details (Public)
+            document.getElementById('freelancerName').textContent = currentService.freelancerName || 'Vorliyo User';
+            
+            if (freelancerData) {
+                document.getElementById('freelancerTagline').textContent = freelancerData.tagline || 'Tagline இல்லை.';
+                document.getElementById('freelancerAbout').textContent = freelancerData.about || 'விவரங்கள் இல்லை.';
+            }
+
+            // Show content
+            document.getElementById('loadingMessage').classList.add('hidden');
+            document.getElementById('serviceDetailsContent').classList.remove('hidden');
+            lucide.createIcons();
+        }
+        
+        // --- CONTACT HANDLER (Manual Order/Contact) ---
+        window.handleContact = () => {
+            onAuthStateChanged(auth, (user) => {
+                if (!user) {
+                    // Not logged in
+                    document.getElementById('contactMessage').classList.remove('hidden');
+                    alert('ஃப்ரீலான்சரைத் தொடர்பு கொள்ள நீங்கள் முதலில் உள்நுழைய வேண்டும்.');
+                    window.location.href = 'user-login.html';
+                    return;
+                }
+                
+                if (freelancerData && freelancerData.email) {
+                    // Logged in user can see email
+                    const emailDisplay = document.getElementById('freelancerEmailDisplay');
+                    const contactButton = document.getElementById('contactButton');
+                    
+                    emailDisplay.textContent = `Email: ${freelancerData.email}`;
+                    emailDisplay.classList.remove('hidden');
+                    document.getElementById('contactMessage').classList.add('hidden');
+
+                    // Opens default email client (optional but helpful)
+                    window.open(`mailto:${freelancerData.email}?subject=Vorliyo மூலம் உங்கள் சேவைக்கு ஆர்டர் (${currentService.title})`);
+                    
+                    // Update button status
+                    contactButton.textContent = 'மின்னஞ்சல் முகவரி காண்பிக்கப்பட்டது (மின்னஞ்சல் திறக்கப்பட்டது)';
+                    contactButton.disabled = true;
+
+                } else {
+                     alert('ஃப்ரீலான்சரின் தொடர்பு விவரங்கள் இல்லை.');
+                }
+            });
+        }
+
+    </script>
+</body>
+</html>
+```eof
+
+### ➡️ அடுத்த படி (Next Step)
+
+சஹான், இப்போது நீங்கள் செய்ய வேண்டியது:
+
+1.  உங்கள் **`vorliyo`** களஞ்சியத்தின் **Root-இல்** (நேரடியாக) **`user-service-details.html`** என்ற கோப்பை உருவாக்கி, மேலே உள்ள முழுமையான குறியீட்டையும் **பதிவேற்றவும்**.
+2.  பதிவேற்றம் முடிந்ததும், **"சரி (OK)"** என்று எனக்குத் தெரிவிக்கவும்.
+
+அடுத்து, **நிர்வாகப் பலகத்தை** (`owner-admin.html`) உருவாக்கலாம்.
