@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="ta">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vorliyo - மதிப்பீடு அளி</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+
+    <header class="bg-white shadow-md">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex justify-between items-center">
+            <a href="user-index.html" class="text-3xl font-extrabold text-indigo-600 tracking-tight">Vorliyo</a>
+            <a href="user-dashboard.html" class="text-gray-600 hover:text-indigo-600 flex items-center">
+                <span data-lucide="layout-dashboard" class="w-5 h-5 mr-1"></span> டாஷ்போர்டு
+            </a>
+        </div>
+    </header>
+
+    <main class="max-w-xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div class="bg-white p-8 rounded-xl shadow-2xl border-t-4 border-yellow-500">
+            <h1 class="text-3xl font-extrabold text-gray-900 mb-6 flex items-center">
+                <span data-lucide="star" class="w-8 h-8 mr-2 text-yellow-500"></span> மதிப்பீடு சமர்ப்பிக்கவும்
+            </h1>
+            
+            <p id="authMessage" class="text-center text-lg text-red-600 font-semibold mb-4 hidden">தயவுசெய்து முதலில் உள்நுழையவும்.</p>
+
+            <form id="ratingForm" class="space-y-6 hidden">
+                <p class="text-gray-700 mb-4">
+                    **வேலை:** <span id="jobTitleDisplay" class="font-semibold text-indigo-600">வேலை விவரம் ஏற்றப்படுகிறது...</span>
+                </p>
+                
+                <div>
+                    <label class="block text-lg font-medium text-gray-700 mb-2">மதிப்பீடு (1-5 நட்சத்திரங்கள்)</label>
+                    <div id="starRating" class="flex space-x-1 text-4xl cursor-pointer">
+                        </div>
+                    <input type="hidden" id="ratingScore" required>
+                    <p class="text-sm text-gray-500 mt-1">தற்போதைய மதிப்பீடு: <span id="currentRatingText" class="font-semibold">0</span></p>
+                </div>
+                
+                <div>
+                    <label for="reviewText" class="block text-lg font-medium text-gray-700">விமர்சனம்</label>
+                    <textarea id="reviewText" rows="4" placeholder="இந்த ஃப்ரீலான்சரின் வேலையைப் பற்றி உங்கள் கருத்து என்ன?" required class="mt-1 block w-full p-3 border border-gray-300 rounded-lg focus:ring-yellow-500 focus:border-yellow-500"></textarea>
+                </div>
+
+                <p id="messageBox" class="text-sm font-medium text-center text-red-600 h-5"></p>
+
+                <button type="submit" class="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-lg font-medium text-white bg-yellow-600 hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500 transition duration-150">
+                    மதிப்பீட்டைச் சமர்ப்பிக்கவும்
+                </button>
+            </form>
+        </div>
+    </main>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, collection, addDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Firebase Config (Please make sure this is your config!)
+        const FIREBASE_CONFIG = {
+            apiKey: "AIzaSyDD755-oGyx0hwrLykhF7m2k1uWFnLFMDQ",
+            authDomain: "vorliyo.firebaseapp.com",
+            projectId: "vorliyo",
+            storageBucket: "vorliyo.firebasestorage.app",
+            messagingSenderId: "480604417883",
+            appId: "1:480604417883:web:5b4926a2a1b21f3ae2747e",
+        };
+        
+        const firebaseConfig = FIREBASE_CONFIG;
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'vorliyo-default-app-id';
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        
+        let currentUser = null;
+        let jobDetails = null;
+        let selectedRating = 0;
+        
+        const PUBLIC_JOBS_COLLECTION = collection(db, 'artifacts', appId, 'public', 'data', 'jobs');
+        const RATINGS_COLLECTION = collection(db, 'artifacts', appId, 'public', 'data', 'ratings');
+
+        // --- RATING UI LOGIC ---
+        function setupStarRating() {
+            const starRatingDiv = document.getElementById('starRating');
+            for (let i = 1; i <= 5; i++) {
+                const star = document.createElement('span');
+                star.innerHTML = '&#9733;'; // Unicode star
+                star.className = 'text-gray-300 hover:text-yellow-400 transition duration-100';
+                star.setAttribute('data-rating', i);
+                
+                star.addEventListener('click', () => setRating(i));
+                star.addEventListener('mouseover', () => hoverRating(i));
+                star.addEventListener('mouseout', () => hoverRating(selectedRating));
+                
+                starRatingDiv.appendChild(star);
+            }
+        }
+
+        function setRating(score) {
+            selectedRating = score;
+            document.getElementById('ratingScore').value = score;
+            document.getElementById('currentRatingText').textContent = score;
+            hoverRating(score);
+        }
+
+        function hoverRating(score) {
+            document.querySelectorAll('#starRating span').forEach((star, index) => {
+                star.classList.remove('text-yellow-500', 'text-gray-300');
+                if (index < score) {
+                    star.classList.add('text-yellow-500');
+                } else {
+                    star.classList.add('text-gray-300');
+                }
+            });
+        }
+
+
+        // --- INITIAL DATA FETCH ---
+        document.addEventListener('DOMContentLoaded', () => {
+            setupStarRating();
+            const urlParams = new URLSearchParams(window.location.search);
+            const jobId = urlParams.get('jobId'); // Expects jobId in URL
+
+            if (!jobId) {
+                document.getElementById('authMessage').textContent = 'வேலை ID காணப்படவில்லை. மதிப்பீடு செய்ய முடியாது.';
+                document.getElementById('authMessage').classList.remove('hidden');
+                return;
+            }
+            
+            // Check auth state
+            onAuthStateChanged(auth, (user) => {
+                if (!user) {
+                    document.getElementById('authMessage').textContent = 'மதிப்பீடு செய்ய நீங்கள் உள்நுழைய வேண்டும்.';
+                    document.getElementById('authMessage').classList.remove('hidden');
+                    return;
+                }
+                currentUser = user;
+                fetchJobDetails(jobId);
+            });
+        });
+        
+        async function fetchJobDetails(jobId) {
+            try {
+                const docRef = doc(PUBLIC_JOBS_COLLECTION, jobId);
+                const docSnap = await getDoc(docRef);
+
+                if (!docSnap.exists()) {
+                    document.getElementById('authMessage').textContent = 'இந்த வேலைப் பட்டியல் இல்லை.';
+                    document.getElementById('authMessage').classList.remove('hidden');
+                    return;
+                }
+
+                jobDetails = docSnap.data();
+                
+                // Crucial Check: Only the client can rate the job they posted
+                if (jobDetails.clientId !== currentUser.uid) {
+                    document.getElementById('authMessage').textContent = 'நீங்கள் இந்த வேலையின் வாடிக்கையாளர் இல்லை. மதிப்பீடு சமர்ப்பிக்க முடியாது.';
+                    document.getElementById('authMessage').classList.remove('hidden');
+                    return;
+                }
+                
+                document.getElementById('jobTitleDisplay').textContent = jobDetails.title;
+                document.getElementById('ratingForm').classList.remove('hidden');
+                
+            } catch (error) {
+                console.error("Error fetching job details:", error);
+                document.getElementById('authMessage').textContent = 'வேலை விவரங்களைப் பெற முடியவில்லை.';
+                document.getElementById('authMessage').classList.remove('hidden');
+            }
+        }
+
+        // --- FORM SUBMISSION ---
+        document.getElementById('ratingForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            if (selectedRating === 0) {
+                document.getElementById('messageBox').textContent = 'தயவுசெய்து நட்சத்திர மதிப்பீட்டைத் தேர்ந்தெடுக்கவும்.';
+                return;
+            }
+
+            if (!jobDetails || !jobDetails.freelancerId) {
+                document.getElementById('messageBox').textContent = 'இந்த வேலையில் ஃப்ரீலான்சர் விவரங்கள் இல்லை.';
+                return;
+            }
+
+            const reviewText = document.getElementById('reviewText').value;
+            const msgBox = document.getElementById('messageBox');
+            
+            msgBox.textContent = 'மதிப்பீட்டைச் சமர்ப்பிக்கிறது...';
+
+            const newRating = {
+                jobId: jobDetails.id,
+                freelancerId: jobDetails.freelancerId,
+                clientId: currentUser.uid,
+                clientName: currentUser.displayName,
+                score: selectedRating,
+                review: reviewText,
+                createdAt: new Date(),
+            };
+
+            try {
+                await addDoc(RATINGS_COLLECTION, newRating);
+                
+                msgBox.textContent = 'மதிப்பீடு வெற்றிகரமாக சமர்ப்பிக்கப்பட்டது!';
+                msgBox.classList.remove('text-red-600');
+                msgBox.classList.add('text-green-600');
+                
+                document.getElementById('ratingForm').innerHTML = `<p class="text-xl text-green-600 font-bold text-center">மதிப்பீடு சமர்ப்பிக்கப்பட்டது! நன்றி.</p><p class="text-center mt-4"><a href="user-dashboard.html" class="text-indigo-600 underline">டாஷ்போர்டுக்குச் செல்ல</a></p>`;
+
+            } catch (error) {
+                console.error("Error submitting rating:", error);
+                msgBox.textContent = 'மதிப்பீட்டைச் சமர்ப்பிப்பதில் பிழை ஏற்பட்டது.';
+                msgBox.classList.remove('text-green-600');
+                msgBox.classList.add('text-red-600');
+            }
+        });
+
+    </script>
+</body>
+</html>
+```eof
+
+### ➡️ அடுத்த படி (Next Step)
+
+சஹான், இப்போது நீங்கள் செய்ய வேண்டியது:
+
+1.  உங்கள் **`vorliyo`** களஞ்சியத்தின் **Root-இல்** (நேரடியாக) **`user-ratings.html`** என்ற கோப்பை உருவாக்கி, மேலே உள்ள முழுமையான குறியீட்டையும் **பதிவேற்றவும்**.
+2.  பதிவேற்றம் முடிந்ததும், **"சரி (OK)"** என்று எனக்குத் தெரிவிக்கவும்.
+
+அடுத்து, நாம் **`client-job-tracking.html`** மற்றும் **`freelancer-job-view.html`** ஆகிய இரண்டு இறுதி சக்திவாய்ந்த அம்சங்களைச் சேர்க்கலாம்.
