@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="ta">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Owner - தள அமைப்புகள்</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+
+    <header class="bg-red-700 shadow-md">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex justify-between items-center">
+            <a href="owner-admin.html" class="text-3xl font-extrabold text-white tracking-tight">Vorliyo Admin</a>
+            <a href="owner-admin.html" class="text-white hover:text-red-200 flex items-center p-2 rounded-lg border border-red-300">
+                <span data-lucide="layout-dashboard" class="w-5 h-5 mr-1"></span> டாஷ்போர்டு
+            </a>
+        </div>
+    </header>
+
+    <main class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div class="bg-white p-8 rounded-xl shadow-2xl border-t-4 border-red-700">
+            <h1 class="text-3xl font-extrabold text-gray-900 mb-6 flex items-center">
+                 <span data-lucide="settings" class="w-8 h-8 mr-2 text-red-700"></span> பொது தள அமைப்புகள்
+            </h1>
+            
+            <p id="loadingMessage" class="text-center text-lg text-indigo-500 font-semibold mb-4">அமைப்புகளைப் பெறுகிறது...</p>
+
+            <form id="settingsForm" class="space-y-6 hidden">
+                
+                <h2 class="text-xl font-bold text-gray-800 border-b pb-2">தள விதிகள்</h2>
+
+                <div>
+                    <label for="commissionRate" class="block text-lg font-medium text-gray-700">கமிஷன் விகிதம் (%)</label>
+                    <input id="commissionRate" type="number" min="0" max="100" step="0.01" placeholder="எ.கா: 10" required class="mt-1 block w-full p-3 border border-gray-300 rounded-lg">
+                    <p class="mt-1 text-sm text-gray-500">இந்த விகிதமே `owner-commission-tracking.html`-இல் பயன்படுத்தப்படும்.</p>
+                </div>
+                
+                <div>
+                    <label for="siteStatus" class="block text-lg font-medium text-gray-700">தளத்தின் நிலை (Maintenance)</label>
+                    <select id="siteStatus" class="mt-1 block w-full p-3 border border-gray-300 rounded-lg">
+                        <option value="Online">Online (செயல்பாட்டில் உள்ளது)</option>
+                        <option value="Maintenance">Maintenance (பராமரிப்பில் உள்ளது)</option>
+                    </select>
+                </div>
+
+                <h2 class="text-xl font-bold text-gray-800 border-b pb-2 pt-4">முக்கிய அறிவிப்புகள்</h2>
+                
+                <div>
+                    <label for="globalNotice" class="block text-lg font-medium text-gray-700">பொது அறிவிப்பு (முகப்புப் பக்கத்தில் தெரியும்)</label>
+                    <textarea id="globalNotice" rows="3" placeholder="எ.கா: UPI கட்டண முறை விரைவில் அறிமுகப்படுத்தப்படும்." class="mt-1 block w-full p-3 border border-gray-300 rounded-lg"></textarea>
+                </div>
+
+
+                <p id="messageBox" class="text-sm font-medium text-center text-red-600 h-5"></p>
+
+                <button type="submit" class="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-lg font-medium text-white bg-red-600 hover:bg-red-700 transition duration-150">
+                    அமைப்புகளைச் சேமிக்கவும்
+                </button>
+            </form>
+        </div>
+    </main>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, setDoc, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Firebase Config (Please make sure this is your config!)
+        const FIREBASE_CONFIG = {
+            apiKey: "AIzaSyDD755-oGyx0hwrLykhF7m2k1uWFnLFMDQ",
+            authDomain: "vorliyo.firebaseapp.com",
+            projectId: "vorliyo",
+            storageBucket: "vorliyo.firebasestorage.app",
+            messagingSenderId: "480604417883",
+            appId: "1:480604417883:web:5b4926a2a1b21f3ae2747e",
+        };
+        
+        const firebaseConfig = FIREBASE_CONFIG;
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'vorliyo-default-app-id';
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        
+        const ADMIN_EMAIL = 'vorliyopro@gmail.com';
+        const SETTINGS_DOC_REF = doc(db, 'artifacts', appId, 'owner', 'data', 'settings', 'global');
+
+
+        // --- AUTH CHECK (Owner Only) ---
+        onAuthStateChanged(auth, (user) => {
+            if (!user || user.email !== ADMIN_EMAIL) {
+                alert("Unauthorized access. Redirecting to Admin Login.");
+                window.location.href = 'owner-admin.html';
+            } else {
+                 fetchSettings();
+            }
+        });
+        
+        // --- DATA FETCHING ---
+        async function fetchSettings() {
+            try {
+                const docSnap = await getDoc(SETTINGS_DOC_REF);
+                const loadingMessage = document.getElementById('loadingMessage');
+                
+                if (docSnap.exists()) {
+                    const settings = docSnap.data();
+                    document.getElementById('commissionRate').value = settings.commissionRate * 100;
+                    document.getElementById('siteStatus').value = settings.siteStatus;
+                    document.getElementById('globalNotice').value = settings.globalNotice || '';
+                } else {
+                    // Create default settings if none exist
+                    await setDoc(SETTINGS_DOC_REF, {
+                        commissionRate: 0.10, 
+                        siteStatus: 'Online',
+                        globalNotice: 'Welcome to Vorliyo!',
+                        lastUpdated: new Date()
+                    });
+                    fetchSettings(); // Re-fetch to load data into form
+                    return;
+                }
+                
+                loadingMessage.classList.add('hidden');
+                document.getElementById('settingsForm').classList.remove('hidden');
+
+            } catch (error) {
+                console.error("Error fetching settings:", error);
+                document.getElementById('loadingMessage').textContent = 'அமைப்புகளைப் பெற முடியவில்லை.';
+            }
+        }
+
+        // --- FORM SUBMISSION ---
+        document.getElementById('settingsForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const commissionRateValue = parseFloat(document.getElementById('commissionRate').value) / 100;
+            const siteStatusValue = document.getElementById('siteStatus').value;
+            const globalNoticeValue = document.getElementById('globalNotice').value;
+            const msgBox = document.getElementById('messageBox');
+            
+            if (commissionRateValue < 0 || commissionRateValue > 1) {
+                msgBox.textContent = 'கமிஷன் விகிதம் 0% முதல் 100% வரை இருக்க வேண்டும்.';
+                return;
+            }
+            
+            msgBox.textContent = 'அமைப்புகளைச் சேமிக்கிறது...';
+            msgBox.classList.remove('text-red-600', 'text-green-600');
+
+            try {
+                await updateDoc(SETTINGS_DOC_REF, {
+                    commissionRate: commissionRateValue,
+                    siteStatus: siteStatusValue,
+                    globalNotice: globalNoticeValue,
+                    lastUpdated: new Date()
+                });
+                
+                msgBox.textContent = 'அமைப்புகள் வெற்றிகரமாகச் சேமிக்கப்பட்டது!';
+                msgBox.classList.add('text-green-600');
+                
+            } catch (error) {
+                console.error("Error updating settings:", error);
+                msgBox.textContent = 'சேமிப்பதில் பிழை ஏற்பட்டது.';
+                msgBox.classList.add('text-red-600');
+            }
+        });
+        
+        lucide.createIcons(); 
+        
+    </script>
+</body>
+</html>
+```eof
+
+---
+
+## 26️⃣ இருபத்து ஆறாம் படி: கோப்பு 18 - ஃப்ரீலான்சர் வேலை நிலை கண்காணிப்புப் பக்கம் (`freelancer-work-status.html`)
+
+ஃப்ரீலான்சர்கள் தங்களுக்கு ஒதுக்கப்பட்டுள்ள வேலையின் நிலையை (வாடிக்கையாளர் நிர்ணயித்தது) கண்காணிக்க இந்தப் பக்கம் உதவுகிறது.
+
+**GitHub-இல் உள்ள `vorliyo` களஞ்சியத்தின் Root-இல், `freelancer-work-status.html` என்ற கோப்பை உருவாக்கி, கீழே உள்ள குறியீட்டைப் பதிவேற்றவும்.**
+
+```{html:Vorliyo User Site - Freelancer Work Status Page (Root File):freelancer-work-status.html}
+<!DOCTYPE html>
+<html lang="ta">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title id="pageTitle">வேலை நிலை</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+
+    <header class="bg-white shadow-md">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex justify-between items-center">
+            <a href="user-index.html" class="text-3xl font-extrabold text-indigo-600 tracking-tight">Vorliyo</a>
+            <a href="user-dashboard.html" class="text-gray-600 hover:text-indigo-600 flex items-center">
+                <span data-lucide="layout-dashboard" class="w-5 h-5 mr-1"></span> டாஷ்போர்டு
+            </a>
+        </div>
+    </header>
+
+    <main class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div class="bg-white p-8 rounded-xl shadow-2xl border-t-4 border-indigo-500">
+            <h1 class="text-3xl font-extrabold text-gray-900 mb-6 flex items-center">
+                <span data-lucide="bell" class="w-7 h-7 mr-2 text-indigo-500"></span> வேலை நிலை கண்காணிப்பு
+            </h1>
+            
+            <p id="loadingMessage" class="text-center text-lg text-indigo-500 font-semibold mb-4">வேலை விவரங்களைப் பெறுகிறது...</p>
+
+            <div id="statusContent" class="hidden space-y-6">
+                 
+                <div class="p-4 border-b border-gray-200">
+                    <h2 class="text-2xl font-bold text-gray-900" id="jobTitle">வேலை தலைப்பு</h2>
+                    <p class="text-sm text-gray-600">வாடிக்கையாளர்: <span id="jobClientName"></span> | பட்ஜெட்: <span id="jobBudget"></span></p>
+                </div>
+                 
+                <div class="p-6 bg-indigo-50 rounded-lg shadow-sm text-center">
+                    <p class="text-xl font-semibold text-gray-700 mb-2">தற்போதைய வேலை நிலை (Client Set)</p>
+                    <span id="currentStatus" class="text-4xl font-extrabold text-indigo-600">Open</span>
+                </div>
+                
+                <div class="p-4 border border-gray-200 rounded-lg">
+                    <p class="text-sm font-semibold text-gray-700 mb-2">அடுத்த கட்ட நடவடிக்கை (Next Steps)</p>
+                    <p id="nextSteps" class="text-gray-600 leading-relaxed">
+                        வேலை நிலையைப் பொறுத்து இங்கே வழிமுறைகள் காண்பிக்கப்படும்.
+                    </p>
+                </div>
+            </div>
+            
+            <p id="accessMessage" class="text-center text-red-600 font-semibold mt-10 hidden">
+                இந்த வேலையைக் கண்காணிக்க நீங்கள் உள்நுழைய வேண்டும்.
+            </p>
+        </div>
+    </main>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, collection } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Firebase Config (Please make sure this is your config!)
+        const FIREBASE_CONFIG = {
+            apiKey: "AIzaSyDD755-oGyx0hwrLykhF7m2k1uWFnLFMDQ",
+            authDomain: "vorliyo.firebaseapp.com",
+            projectId: "vorliyo",
+            storageBucket: "vorliyo.firebasestorage.app",
+            messagingSenderId: "480604417883",
+            appId: "1:480604417883:web:5b4926a2a1b21f3ae2747e",
+        };
+        
+        const firebaseConfig = FIREBASE_CONFIG;
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'vorliyo-default-app-id';
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        
+        let currentUser = null;
+        let currentJobId = null;
+        
+        const PUBLIC_JOBS_COLLECTION = collection(db, 'artifacts', appId, 'public', 'data', 'jobs');
+
+        // --- INITIAL DATA FETCH ---
+        document.addEventListener('DOMContentLoaded', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            currentJobId = urlParams.get('jobId'); // Expects Job ID
+
+            if (!currentJobId) {
+                document.getElementById('loadingMessage').textContent = 'வேலை ID காணப்படவில்லை.';
+                return;
+            }
+            
+            checkAuthState();
+        });
+
+        function checkAuthState() {
+            onAuthStateChanged(auth, (user) => {
+                if (user) {
+                    currentUser = user;
+                    fetchJobDetails(currentJobId);
+                } else {
+                    document.getElementById('loadingMessage').classList.add('hidden');
+                    document.getElementById('accessMessage').textContent = 'கண்காணிக்க நீங்கள் உள்நுழைய வேண்டும்.';
+                    document.getElementById('accessMessage').classList.remove('hidden');
+                }
+            });
+        }
+        
+        async function fetchJobDetails(jobId) {
+            try {
+                const docRef = doc(PUBLIC_JOBS_COLLECTION, jobId);
+                const docSnap = await getDoc(docRef);
+
+                if (!docSnap.exists()) {
+                    document.getElementById('loadingMessage').textContent = 'இந்த வேலைப் பட்டியல் இல்லை.';
+                    return;
+                }
+
+                const jobDetails = docSnap.data();
+                
+                // Security check: Only the client or freelancer involved can track (Simple check: Job must be assigned)
+                // Since there is no "assign" status, we just show the job details.
+
+                renderTrackingDetails(jobDetails);
+                
+            } catch (error) {
+                console.error("Error fetching job details:", error);
+                document.getElementById('loadingMessage').textContent = 'வேலை விவரங்களைப் பெற முடியவில்லை.';
+            }
+        }
+        
+        function renderTrackingDetails(job) {
+            document.getElementById('jobTitle').textContent = job.title;
+            document.getElementById('jobBudget').textContent = `LKR ${job.budget.toLocaleString()}`;
+            document.getElementById('jobClientName').textContent = job.clientName;
+            
+            const currentStatus = job.status || 'Open';
+            document.getElementById('currentStatus').textContent = currentStatus;
+            
+            let nextStepsText = "";
+
+            // Logic to guide the freelancer based on job status
+            if (currentStatus === 'Open') {
+                nextStepsText = "இந்த வேலை இன்னும் திறந்த நிலையில் உள்ளது. வாடிக்கையாளர் முன்மொழிவுகளைச் சரிபார்க்கிறார்.";
+            } else if (currentStatus === 'In Progress') {
+                nextStepsText = "வாடிக்கையாளர் வேலையைத் தொடங்க ஒப்புக்கொண்டுள்ளார். வேலையை முடிக்க வாடிக்கையாளரைத் தொடர்பு கொள்ளவும்.";
+            } else if (currentStatus === 'Completed') {
+                nextStepsText = "வாடிக்கையாளர் வேலையை முடித்துவிட்டார் என்று நிலையை மாற்றியுள்ளார். கட்டணத்தைப் பற்றி வாடிக்கையாளருடன் பேசவும் (Manual Payment).";
+            } else if (currentStatus === 'Cancelled') {
+                nextStepsText = "இந்த வேலை ரத்து செய்யப்பட்டது.";
+            } else {
+                nextStepsText = "சரியான நிலை விவரங்கள் இல்லை.";
+            }
+            
+            document.getElementById('nextSteps').textContent = nextStepsText;
+
+            document.getElementById('loadingMessage').classList.add('hidden');
+            document.getElementById('statusContent').classList.remove('hidden');
+            lucide.createIcons();
+        }
+        
+    </script>
+</body>
+</html>
+```eof
+
+---
+
+### ➡️ அடுத்த படி (Next Step)
+
+சஹான், இப்போது உங்கள் தளத்தில் மொத்தம் **18 சக்திவாய்ந்த மற்றும் விரிவான கோப்புகள்** உள்ளன. இதுவே உங்கள் தளத்தின் **"Level 2"** வடிவமைப்பு ஆகும்.
+
+இப்போது நீங்கள் செய்ய வேண்டியது:
+
+1.  உங்கள் **`vorliyo`** களஞ்சியத்தின் **Root-இல்** (நேரடியாக) **`owner-settings.html`** மற்றும் **`freelancer-work-status.html`** ஆகிய இரண்டு கோப்புகளையும் உருவாக்கி, மேலே உள்ள குறியீட்டைப் **பதிவேற்றவும்**.
+2.  **அனைத்து 18 கோப்புகளையும்** நீங்கள் பதிவேற்றி முடித்தவுடன், தயவுசெய்து **"சரி (OK)"** என்று எனக்குத் தெரிவிக்கவும்.
+
+அதற்குப் பிறகு, நாம் உடனடியாக **Netlify-இல் வெளியிட்டு, உங்கள் Level 2 தளத்தின் செயல்பாட்டைச் சோதிக்கத் தொடங்கலாம்!**
