@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="ta">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title id="pageTitle">வேலை விவரங்கள்</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+
+    <header class="bg-white shadow-md">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex justify-between items-center">
+            <a href="user-index.html" class="text-3xl font-extrabold text-indigo-600 tracking-tight">Vorliyo</a>
+            <button onclick="window.history.back()" class="text-gray-600 hover:text-indigo-600 flex items-center">
+                <span data-lucide="arrow-left" class="w-5 h-5 mr-1"></span> திரும்பிப் போக
+            </button>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            
+            <div class="lg:col-span-2 bg-white p-8 rounded-xl shadow-lg h-fit">
+                <p id="loadingMessage" class="text-center text-lg text-indigo-500 font-semibold">வேலை விவரங்களைப் பெறுகிறது...</p>
+
+                <div id="jobDetailsContent" class="hidden">
+                    <span id="jobCategory" class="inline-block text-sm font-medium bg-green-100 text-green-800 px-3 py-1 rounded-full mb-3"></span>
+                    <h1 id="jobTitle" class="text-3xl font-bold text-gray-900 mb-4"></h1>
+                    
+                    <div class="flex items-center space-x-6 text-gray-600 mb-6">
+                        <div class="flex items-center">
+                            <span data-lucide="dollar-sign" class="w-5 h-5 mr-1 text-green-600"></span>
+                            Budget: <span id="jobBudget" class="font-semibold ml-1">LKR 0</span>
+                        </div>
+                        <div class="flex items-center">
+                            <span data-lucide="clock" class="w-5 h-5 mr-1 text-indigo-600"></span>
+                            Duration: <span id="jobDuration" class="font-semibold ml-1">0 Days</span>
+                        </div>
+                    </div>
+
+                    <h2 class="text-2xl font-semibold text-gray-800 mb-3 border-b pb-2">வேலை விளக்கம்</h2>
+                    <p id="jobDescription" class="text-gray-700 leading-relaxed"></p>
+
+                    <h2 class="text-2xl font-semibold text-gray-800 mt-8 mb-3 border-b pb-2">வாடிக்கையாளர் தகவல்</h2>
+                    <p class="text-gray-700 leading-relaxed">
+                        Posted by: <span id="clientName" class="font-semibold">Client User</span>
+                    </p>
+                    <p class="text-gray-700 leading-relaxed">
+                        Status: <span id="jobStatus" class="font-semibold">Open</span>
+                    </p>
+                    
+                </div>
+            </div>
+
+            <div class="lg:col-span-1">
+                <div id="proposalBox" class="bg-white p-6 rounded-xl shadow-2xl sticky top-20 border-t-4 border-indigo-600 hidden">
+                    <h3 class="text-2xl font-bold text-gray-900 mb-4">இந்த வேலைக்கு விண்ணப்பிக்கவும்</h3>
+                    
+                    <p id="proposalMessage" class="text-sm text-red-600 mb-3 h-5"></p>
+                    <p id="existingProposalMessage" class="text-sm text-green-600 mb-3 h-5 hidden">நீங்கள் ஏற்கனவே இந்த வேலைக்கு விண்ணப்பித்துள்ளீர்கள்.</p>
+
+                    <form id="proposalForm" class="space-y-4">
+                        <div>
+                            <label for="proposalPrice" class="block text-sm font-medium text-gray-700">உங்கள் விலை (LKR)</label>
+                            <input id="proposalPrice" type="number" placeholder="வேலையை முடிக்க மொத்த செலவு" required class="mt-1 block w-full p-2 border border-gray-300 rounded-lg">
+                        </div>
+                        <div>
+                            <label for="proposalCoverLetter" class="block text-sm font-medium text-gray-700">கவர் லெட்டர் (Cover Letter)</label>
+                            <textarea id="proposalCoverLetter" rows="4" placeholder="இந்த வேலைக்கு நீங்கள் ஏன் சரியான நபர் என்பதை விளக்குங்கள்." required class="mt-1 block w-full p-2 border border-gray-300 rounded-lg"></textarea>
+                        </div>
+
+                        <button type="submit" id="submitProposalBtn" class="w-full flex items-center justify-center py-3 px-4 rounded-lg shadow-md text-lg font-medium text-white bg-green-600 hover:bg-green-700 transition duration-150">
+                            முன்மொழிவைச் சமர்ப்பிக்க
+                        </button>
+                    </form>
+
+                    <p class="text-xs text-gray-500 mt-3 text-center">
+                        கட்டணம், கமிஷன் ஆகியவை நேரடியாக வாடிக்கையாளர் மற்றும் ஃப்ரீலான்சர் இடையே கையாளப்படும்.
+                    </p>
+                </div>
+
+                 <p id="accessMessage" class="text-center text-red-600 font-semibold mt-10 hidden">
+                    முன்மொழிவைச் சமர்ப்பிக்க நீங்கள் ஒரு ஃப்ரீலான்சராக உள்நுழைய வேண்டும்.
+                </p>
+            </div>
+        </div>
+    </main>
+
+    <footer class="bg-gray-800 text-white mt-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 text-center">
+            <p>&copy; 2024 Vorliyo. சகான் உருவாக்கிய ஃப்ரீலான்ஸ் தளம்.</p>
+        </div>
+    </footer>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, collection, addDoc, query, where, getDocs, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Firebase Config (Please make sure this is your config!)
+        const FIREBASE_CONFIG = {
+            apiKey: "AIzaSyDD755-oGyx0hwrLykhF7m2k1uWFnLFMDQ",
+            authDomain: "vorliyo.firebaseapp.com",
+            projectId: "vorliyo",
+            storageBucket: "vorliyo.firebasestorage.app",
+            messagingSenderId: "480604417883",
+            appId: "1:480604417883:web:5b4926a2a1b21f3ae2747e",
+        };
+        
+        const firebaseConfig = FIREBASE_CONFIG;
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'vorliyo-default-app-id';
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        
+        let currentUser = null;
+        let userProfile = null;
+        let currentJobId = null;
+        
+        // Firestore Path Helpers
+        const getProfileDocRef = (uid) => doc(db, 'artifacts', appId, 'users', uid, 'profile', uid);
+        const PUBLIC_JOBS_COLLECTION = collection(db, 'artifacts', appId, 'public', 'data', 'jobs');
+        const PROPOSALS_COLLECTION = collection(db, 'artifacts', appId, 'public', 'data', 'proposals');
+
+        // --- INITIAL DATA FETCH ---
+        document.addEventListener('DOMContentLoaded', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            currentJobId = urlParams.get('id');
+
+            if (!currentJobId) {
+                document.getElementById('loadingMessage').textContent = 'வேலை ID காணப்படவில்லை.';
+                return;
+            }
+            fetchJobDetails(currentJobId);
+        });
+
+        async function fetchJobDetails(jobId) {
+            try {
+                const docRef = doc(PUBLIC_JOBS_COLLECTION, jobId);
+                const docSnap = await getDoc(docRef);
+
+                if (!docSnap.exists()) {
+                    document.getElementById('loadingMessage').textContent = 'இந்த வேலைப் பட்டியல் இல்லை.';
+                    return;
+                }
+
+                const jobData = docSnap.data();
+                
+                // Render Job Details
+                document.getElementById('pageTitle').textContent = jobData.title;
+                document.getElementById('jobCategory').textContent = jobData.category;
+                document.getElementById('jobTitle').textContent = jobData.title;
+                document.getElementById('jobBudget').textContent = `LKR ${jobData.budget.toLocaleString()}`;
+                document.getElementById('jobDuration').textContent = `${jobData.durationDays} Days`;
+                document.getElementById('jobDescription').textContent = jobData.description;
+                document.getElementById('clientName').textContent = jobData.clientName;
+                document.getElementById('jobStatus').textContent = jobData.status;
+
+                document.getElementById('loadingMessage').classList.add('hidden');
+                document.getElementById('jobDetailsContent').classList.remove('hidden');
+                lucide.createIcons();
+                
+                // Check Auth state for proposal box visibility
+                checkAuthState();
+                
+            } catch (error) {
+                console.error("Error fetching job details:", error);
+                document.getElementById('loadingMessage').textContent = 'வேலை விவரங்களைப் பெற முடியவில்லை.';
+            }
+        }
+        
+        // --- AUTH & PROPOSAL CHECK ---
+        function checkAuthState() {
+            onAuthStateChanged(auth, (user) => {
+                if (user) {
+                    currentUser = user;
+                    fetchUserProfileAndCheckProposal(user.uid);
+                } else {
+                    // Not logged in: Show message to login/sign up
+                    document.getElementById('accessMessage').classList.remove('hidden');
+                }
+            });
+        }
+
+        async function fetchUserProfileAndCheckProposal(uid) {
+            const docRef = getProfileDocRef(uid);
+            const docSnap = await getDoc(docRef);
+
+            if (docSnap.exists()) {
+                userProfile = docSnap.data();
+                
+                if (userProfile.userType === 'freelancer') {
+                    document.getElementById('proposalBox').classList.remove('hidden');
+                    checkExistingProposal(uid);
+                } else {
+                    // Not a freelancer (Client): Cannot submit proposal
+                    document.getElementById('accessMessage').textContent = "வாடிக்கையாளர்களால் முன்மொழிவைச் சமர்ப்பிக்க முடியாது.";
+                    document.getElementById('accessMessage').classList.remove('hidden');
+                }
+            }
+        }
+        
+        async function checkExistingProposal(freelancerId) {
+            // Query: Find if a proposal exists for this job by this freelancer
+            const q = query(PROPOSALS_COLLECTION, 
+                            where("jobId", "==", currentJobId), 
+                            where("freelancerId", "==", freelancerId));
+                            
+            const snapshot = await getDocs(q);
+            
+            if (!snapshot.empty) {
+                // Proposal already exists
+                document.getElementById('submitProposalBtn').disabled = true;
+                document.getElementById('submitProposalBtn').textContent = 'ஏற்கனவே சமர்ப்பிக்கப்பட்டது';
+                document.getElementById('submitProposalBtn').classList.remove('bg-green-600');
+                document.getElementById('submitProposalBtn').classList.add('bg-gray-400');
+                document.getElementById('existingProposalMessage').classList.remove('hidden');
+                document.getElementById('proposalForm').style.opacity = '0.5';
+            }
+        }
+
+        // --- PROPOSAL SUBMISSION ---
+        document.getElementById('proposalForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            if (!currentUser || userProfile.userType !== 'freelancer' || !currentJobId) {
+                document.getElementById('proposalMessage').textContent = 'சமர்ப்பிக்க உங்களுக்கு அனுமதி இல்லை.';
+                return;
+            }
+            
+            const proposalPrice = parseFloat(document.getElementById('proposalPrice').value);
+            const coverLetter = document.getElementById('proposalCoverLetter').value;
+            const msgBox = document.getElementById('proposalMessage');
+            
+            msgBox.textContent = 'முன்மொழிவைச் சமர்ப்பிக்கிறது...';
+
+            const newProposal = {
+                jobId: currentJobId,
+                freelancerId: currentUser.uid,
+                freelancerName: userProfile.name || currentUser.displayName,
+                proposalPrice: proposalPrice,
+                coverLetter: coverLetter,
+                status: 'Submitted',
+                createdAt: new Date(),
+            };
+
+            try {
+                await addDoc(PROPOSALS_COLLECTION, newProposal);
+                
+                msgBox.textContent = 'முன்மொழிவு வெற்றிகரமாக சமர்ப்பிக்கப்பட்டது!';
+                msgBox.classList.remove('text-red-600');
+                msgBox.classList.add('text-green-600');
+                
+                document.getElementById('submitProposalBtn').disabled = true;
+                document.getElementById('submitProposalBtn').textContent = 'சமர்ப்பிக்கப்பட்டது!';
+                document.getElementById('submitProposalBtn').classList.remove('bg-green-600');
+                document.getElementById('submitProposalBtn').classList.add('bg-gray-400');
+                
+            } catch (error) {
+                console.error("Error submitting proposal:", error);
+                msgBox.textContent = 'சமர்ப்பிப்பதில் பிழை ஏற்பட்டது.';
+                msgBox.classList.remove('text-green-600');
+                msgBox.classList.add('text-red-600');
+            }
+        });
+
+    </script>
+</body>
+</html>
+```eof
+
+### ➡️ அடுத்த படி (Next Step)
+
+சஹான், இப்போது நீங்கள் செய்ய வேண்டியது:
+
+1.  உங்கள் **`vorliyo`** களஞ்சியத்தின் **Root-இல்** (நேரடியாக) **`user-job-details.html`** என்ற கோப்பை உருவாக்கி, மேலே உள்ள முழுமையான குறியீட்டையும் **பதிவேற்றவும்**.
+2.  பதிவேற்றம் முடிந்ததும், **"சரி (OK)"** என்று எனக்குத் தெரிவிக்கவும்.
+
+அடுத்து, நாம் **ஃப்ரீலான்சர்கள் வெளியிட்ட சேவைகளின் விவரங்களை** (`user-service-details.html`) பார்க்கும் பக்கத்தை உருவாக்கலாம்.
