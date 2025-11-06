@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="ta">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title id="pageTitle">ஃப்ரீலான்சர் சுயவிவரம்</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+
+    <header class="bg-white shadow-md">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex justify-between items-center">
+            <a href="user-index.html" class="text-3xl font-extrabold text-indigo-600 tracking-tight">Vorliyo</a>
+            <button onclick="window.history.back()" class="text-gray-600 hover:text-indigo-600 flex items-center">
+                <span data-lucide="arrow-left" class="w-5 h-5 mr-1"></span> திரும்பிப் போக
+            </button>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
+            
+            <div class="lg:col-span-1 space-y-6">
+                <div id="loadingMessage" class="text-center text-lg text-indigo-500 font-semibold">சுயவிவரத்தைப் பெறுகிறது...</div>
+
+                <div id="profileCard" class="bg-white p-6 rounded-xl shadow-lg border-t-4 border-indigo-600 hidden">
+                    <h2 class="text-2xl font-bold text-gray-900 mb-4 flex items-center">
+                        <span data-lucide="user-circle" class="w-6 h-6 mr-2"></span> <span id="publicFreelancerName"></span>
+                    </h2>
+                    
+                    <p id="publicFreelancerTagline" class="text-gray-700 mb-4 italic"></p>
+                    
+                    <h3 class="font-semibold text-gray-800 mb-2 border-b pb-1">திறமைகள் பற்றி</h3>
+                    <p id="publicFreelancerAbout" class="text-sm text-gray-600 leading-relaxed"></p>
+
+                    <p class="mt-4 text-xs text-gray-500">
+                        **உறுப்பினர்:** <span id="memberSince"></span>
+                    </p>
+                    <button onclick="handleContact()" id="contactBtn" class="mt-4 w-full bg-green-500 text-white p-2 rounded-lg hover:bg-green-600">
+                        தொடர்பு கொள்ள
+                    </button>
+                </div>
+            </div>
+
+            <div class="lg:col-span-3 space-y-6">
+                 <h2 class="text-2xl font-bold text-gray-800 mb-4 border-b pb-2">ஃப்ரீலான்சரின் மற்ற சேவைகள்</h2>
+                 <div id="otherServicesList" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <p class="text-gray-500 col-span-full" id="servicesStatus">பிற சேவைகளைப் பெறுகிறது...</p>
+                 </div>
+            </div>
+        </div>
+    </main>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, collection, query, where, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Firebase Config (Please make sure this is your config!)
+        const FIREBASE_CONFIG = {
+            apiKey: "AIzaSyDD755-oGyx0hwrLykhF7m2k1uWFnLFMDQ",
+            authDomain: "vorliyo.firebaseapp.com",
+            projectId: "vorliyo",
+            storageBucket: "vorliyo.firebasestorage.app",
+            messagingSenderId: "480604417883",
+            appId: "1:480604417883:web:5b4926a2a1b21f3ae2747e",
+        };
+        
+        const firebaseConfig = FIREBASE_CONFIG;
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'vorliyo-default-app-id';
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        
+        let targetFreelancerId = null;
+        let publicProfile = null;
+        
+        const getProfileDocRef = (uid) => doc(db, 'artifacts', appId, 'users', uid, 'profile', uid);
+        const PUBLIC_SERVICES_COLLECTION = collection(db, 'artifacts', appId, 'public', 'data', 'services');
+
+        // --- INITIAL DATA FETCH ---
+        document.addEventListener('DOMContentLoaded', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            targetFreelancerId = urlParams.get('id'); // Assumes ID is passed via URL query
+
+            if (!targetFreelancerId) {
+                document.getElementById('loadingMessage').textContent = 'Freelancer ID காணப்படவில்லை.';
+                return;
+            }
+            fetchFreelancerProfile(targetFreelancerId);
+            listenToOtherServices(targetFreelancerId);
+        });
+
+        async function fetchFreelancerProfile(uid) {
+            try {
+                const docRef = getProfileDocRef(uid);
+                const docSnap = await getDoc(docRef);
+
+                if (!docSnap.exists() || docSnap.data().userType !== 'freelancer') {
+                    document.getElementById('loadingMessage').textContent = 'இந்த ஃப்ரீலான்சர் சுயவிவரம் பொதுவில் இல்லை.';
+                    return;
+                }
+
+                publicProfile = docSnap.data();
+                renderProfileCard();
+
+            } catch (error) {
+                console.error("Error fetching freelancer profile:", error);
+                document.getElementById('loadingMessage').textContent = 'சுயவிவரத்தைப் பெற முடியவில்லை.';
+            }
+        }
+        
+        function renderProfileCard() {
+            if (!publicProfile) return;
+
+            // Render profile details
+            document.getElementById('pageTitle').textContent = publicProfile.name || 'Freelancer Profile';
+            document.getElementById('publicFreelancerName').textContent = publicProfile.name || 'Unnamed Freelancer';
+            document.getElementById('publicFreelancerTagline').textContent = publicProfile.tagline || 'Tagline இல்லை.';
+            document.getElementById('publicFreelancerAbout').textContent = publicProfile.about || 'விளக்கங்கள் இல்லை.';
+            
+            const memberDate = publicProfile.createdAt ? new Date(publicProfile.createdAt.toDate()).toLocaleDateString() : 'அறியப்படவில்லை';
+            document.getElementById('memberSince').textContent = memberDate;
+
+            // Show content
+            document.getElementById('loadingMessage').classList.add('hidden');
+            document.getElementById('profileCard').classList.remove('hidden');
+            lucide.createIcons();
+        }
+
+        function listenToOtherServices(uid) {
+            const list = document.getElementById('otherServicesList');
+            const status = document.getElementById('servicesStatus');
+            
+            // Query: Gigs published by this freelancer
+            const q = query(PUBLIC_SERVICES_COLLECTION, where("freelancerId", "==", uid));
+            
+            onSnapshot(q, (snapshot) => {
+                const services = [];
+                snapshot.forEach((doc) => {
+                    services.push({ id: doc.id, ...doc.data() });
+                });
+                renderOtherServices(services, list, status);
+            }, (error) => { 
+                console.error("Error fetching other services:", error); 
+                status.textContent = 'சேவைகளைப் பெற முடியவில்லை.';
+            });
+        }
+        
+        function renderOtherServices(services, list, status) {
+            if (services.length === 0) {
+                status.textContent = 'இந்த ஃப்ரீலான்சர் வேறு சேவைகளை வெளியிடவில்லை.';
+                return;
+            }
+            status.classList.add('hidden');
+            
+            list.innerHTML = services.map(service => `
+                 <div class="bg-white p-5 rounded-xl shadow-lg border-l-4 border-indigo-400 flex flex-col justify-between h-full">
+                        <div>
+                            <span class="text-xs font-medium bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded-full">${service.category}</span>
+                            <h4 class="text-xl font-bold text-gray-900 mt-2 mb-2">${service.title}</h4>
+                            <p class="text-gray-600 text-sm mb-4">${(service.description || 'விளக்கம் இல்லை').substring(0, 80) + '...'}</p>
+                        </div>
+                        <div class="border-t pt-3">
+                            <div class="flex justify-between items-center mb-2">
+                                <span class="text-lg font-extrabold text-green-600">LKR ${service.price} / hr</span>
+                            </div>
+                            <a href="user-service-details.html?id=${service.id}" class="w-full block text-center bg-indigo-600 text-white p-2 rounded-lg hover:bg-indigo-700 transition duration-150">
+                                சேவையைப் பார்க்க
+                            </a>
+                        </div>
+                    </div>
+            `).join('');
+            lucide.createIcons();
+        }
+
+        // --- CONTACT HANDLER (Manual Contact) ---
+        window.handleContact = () => {
+            onAuthStateChanged(auth, (user) => {
+                if (!user) {
+                    alert('தொடர்பு விவரங்களைப் பெற நீங்கள் முதலில் உள்நுழைய வேண்டும்.');
+                    window.location.href = 'user-login.html';
+                    return;
+                }
+                
+                if (publicProfile && publicProfile.email) {
+                    alert(`ஃப்ரீலான்சரின் மின்னஞ்சல் முகவரி: ${publicProfile.email}. இந்த முகவரிக்கு மின்னஞ்சல் அனுப்புவதன் மூலம் நீங்கள் பேச்சுவார்த்தையைத் தொடங்கலாம்.`);
+                    window.open(`mailto:${publicProfile.email}?subject=Vorliyo மூலம் தொடர்பு (${publicProfile.name})`);
+                } else {
+                     alert('ஃப்ரீலான்சரின் தொடர்பு விவரங்கள் இல்லை.');
+                }
+            });
+        }
+        
+    </script>
+</body>
+</html>
+```eof
+
+### ➡️ அடுத்த படி (Next Step)
+
+சஹான், இப்போது நீங்கள் செய்ய வேண்டியது:
+
+1.  உங்கள் **`vorliyo`** களஞ்சியத்தின் **Root-இல்** (நேரடியாக) **`public-freelancer-profile.html`** என்ற கோப்பை உருவாக்கி, மேலே உள்ள முழுமையான குறியீட்டையும் **பதிவேற்றவும்**.
+2.  இதுவே User Site-ஐ மேம்படுத்த நாம் செய்யும் இறுதிப் பொதுவான ஃபைல். இதைச் செய்தவுடன், நாம் **Netlify-இல் தளத்தை வெளியிட்டு, சோதிக்கத் தொடங்கலாம்!**
+
+தயவுசெய்து பதிவேற்றம் முடிந்ததும் **"சரி (OK)"** என்று எனக்குத் தெரிவிக்கவும்.
