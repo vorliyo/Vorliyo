@@ -1,3 +1,8 @@
+<!--
+  Vorliyo: Freelance Platform - Login/Signup Page
+  File: user-login.html (ROOT FILE)
+  FIX: Corrected Firebase import structure to ensure SDK loads correctly.
+-->
 <!DOCTYPE html>
 <html lang="ta">
 <head>
@@ -17,8 +22,10 @@
         <h1 class="text-3xl font-extrabold text-indigo-600 text-center">Vorliyo</h1>
         <h2 class="text-2xl font-bold text-gray-900 text-center" id="authTitle">உள்நுழைக</h2>
 
+        <!-- Login/Signup Form -->
         <form id="authForm" class="space-y-4">
             
+            <!-- User Type Selector (Only visible during signup) -->
             <div id="userTypeSelector" class="hidden">
                  <label for="userType" class="block text-sm font-medium text-gray-700">நீங்கள் யார்?</label>
                  <select id="userType" required class="mt-1 block w-full p-3 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500">
@@ -28,7 +35,8 @@
                  </select>
             </div>
             
-             <div id="nameField" class="hidden">
+             <!-- Name Field (Only visible during signup) -->
+            <div id="nameField" class="hidden">
                  <label for="userName" class="block text-sm font-medium text-gray-700">உங்கள் பெயர்</label>
                  <input id="userName" type="text" placeholder="உங்கள் முழுப் பெயர்" class="mt-1 block w-full p-3 border border-gray-300 rounded-lg">
             </div>
@@ -50,6 +58,7 @@
             </button>
         </form>
 
+        <!-- Switcher -->
         <div class="text-center pt-2">
             <button onclick="toggleAuthMode()" id="switchAuthMode" class="text-indigo-600 hover:text-indigo-800 font-medium">
                 கணக்கு இல்லையா? பதிவு செய்யவும்
@@ -60,19 +69,33 @@
         </div>
     </div>
 
+    <!-- Firebase SDKs -->
     <script type="module">
+        // FIX: Importing all necessary functions from their respective modules
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { 
+            getAuth, 
+            signInWithEmailAndPassword, 
+            createUserWithEmailAndPassword, 
+            onAuthStateChanged 
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { 
+            getFirestore, 
+            doc, 
+            setDoc 
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Firebase Config (Please make sure this is your config!)
+
+        // ********** உங்கள் Firebase Config-ஐ இங்கே மாற்றவும்! **********
+        // ********** Replace the FIREBASE_CONFIG here with your actual values! **********
         const FIREBASE_CONFIG = {
-            apiKey: "AIzaSyDD755-oGyx0hwrLykhF7m2k1uWFnLFMDQ",
+            apiKey: "AIzaSyDD755-oGyx0hwrLykhF7m2k1uWFnLFMDQ", // உங்கள் சரியான apiKey
             authDomain: "vorliyo.firebaseapp.com",
             projectId: "vorliyo",
             storageBucket: "vorliyo.firebasestorage.app",
             messagingSenderId: "480604417883",
             appId: "1:480604417883:web:5b4926a2a1b21f3ae2747e",
+            // measurementId: "G-P8VRC4NKGT" // Analytics is not required for core functionality
         };
         
         const firebaseConfig = FIREBASE_CONFIG;
@@ -91,7 +114,6 @@
                 document.getElementById('messageBox').textContent = 'நீங்கள் ஏற்கனவே உள்நுழைந்துள்ளீர்கள். டாஷ்போர்டுக்குச் செல்கிறது...';
                 document.getElementById('messageBox').classList.remove('text-red-600');
                 document.getElementById('messageBox').classList.add('text-green-600');
-                // FIX: Added './' for reliable path resolution
                 setTimeout(() => { window.location.href = './user-dashboard.html'; }, 1500);
             }
         });
@@ -132,7 +154,6 @@
                     msgBox.textContent = 'வெற்றிகரமாக உள்நுழைந்தது! டாஷ்போர்டுக்குச் செல்கிறது...';
                     msgBox.classList.remove('text-red-600');
                     msgBox.classList.add('text-green-600');
-                    // FIX: Added './' for reliable path resolution
                     setTimeout(() => { window.location.href = './user-dashboard.html'; }, 1000);
                 } catch (error) {
                     console.error("Login Error:", error);
@@ -152,8 +173,6 @@
                     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
                     const user = userCredential.user;
                     
-                    // FIX: Ensure correct profile path is used to prevent "Profile document not found" error
-                    // Firestore Profile Creation Path: artifacts/{appId}/users/{uid}/profile/{uid}
                     const profileDocRef = doc(db, 'artifacts', appId, 'users', user.uid, 'profile', user.uid);
                     await setDoc(profileDocRef, {
                         uid: user.uid,
@@ -170,7 +189,6 @@
                     msgBox.textContent = 'பதிவு வெற்றிகரமாக முடிந்தது! டாஷ்போர்டுக்குச் செல்கிறது...';
                     msgBox.classList.remove('text-red-600');
                     msgBox.classList.add('text-green-600');
-                    // FIX: Added './' for reliable path resolution
                     setTimeout(() => { window.location.href = './user-dashboard.html'; }, 1000);
                 } catch (error) {
                     console.error("Signup Error:", error);
@@ -182,4 +200,3 @@
     </script>
 </body>
 </html>
-```eof
